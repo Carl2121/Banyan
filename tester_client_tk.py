@@ -1,4 +1,3 @@
-#tk_echo_client.py
 from __future__ import unicode_literals
 
 import time
@@ -19,25 +18,20 @@ import msgpack
 import zmq
 from python_banyan.banyan_base import BanyanBase
 
-
 class TkEchoClient(BanyanBase):
-    """
-    A graphical echo client.
-    """
 
     def __init__(self,topics='reply', number_of_messages=10,
                  back_plane_ip_address=None, subscriber_port='43125',
                  publisher_port='43124', process_name='Auction IO'):
-        """
+        # Prompt the user for their name
+        self.user_name = simpledialog.askstring("Your Name", "Enter your name:")
+        if not self.user_name:
+            sys.exit(0)  # Exit if the user cancels the input
 
-        :param topics: A list of topics to subscribe to
-        :param number_of_messages: Default number of echo messages to send
-        :param back_plane_ip_address:
-        :param subscriber_port:
-        :param publisher_port:
-        :param process_name:
-        """
 
+        # ... (your existing __init__ code)
+
+        # ... (your existing GUI setup code)
         # establish some banyan variables
         self.back_plane_ip_address = back_plane_ip_address
         self.subscriber_port = subscriber_port
@@ -102,44 +96,45 @@ class TkEchoClient(BanyanBase):
         self.highest_bidder_list = Listbox(self.highest_bidder_frame, width=110, height=10)
         self.highest_bidder_list.grid(row=0, column=0, padx=10, pady=10, sticky="nsew", columnspan=2)
 
-        # messages to be sent
-        # self.messages_to_be_sent = StringVar()
-        # self.messages_to_be_sent.set(str(number_of_messages))
-        #
-        # # messages sent count
-        # self.message_sent_count = 0
-        # self.messages_sent = StringVar()
-        # self.messages_sent.set(str(self.message_sent_count))
 
         self.sell_button.config(command=self.place_sell)
         self.delete_sell_button.config(command=self.delete_sell_item)
         self.bid_button_bidding.config(command=self.place_bid)
+
+        # Adjust column weights
+    def send(self, *args):
+        msgs = self.to_send_entry.get()
+        self.message_sent_count = 0
+        self.messages_sent.set(str(self.message_sent_count))
+        self.message_number = int(msgs)
+        self.number_of_messages = int(msgs)
+        payload = {'message_number': int(msgs), 'action': 'send', 'user_name': self.user_name}
+        self.publish_payload(payload, 'echo')
 
     def place_sell(self):
         sell_item = simpledialog.askstring("Sell Item", "Enter item to sell:")
         if sell_item:
             price = simpledialog.askfloat("Set Price", f"Enter the price for {sell_item}:")
             if price is not None:
-                user_name = simpledialog.askstring("Your Name", "Enter your name:")
-                item_info = f"{sell_item} - ₱{price:.2f} - {user_name}"
-                self.items_selling.insert(END, item_info)
-                self.items_bidding.insert(END, item_info)
-                # Send the message to the server
-                self.publish_payload({'action': 'sell', 'item': sell_item, 'price': price, 'user': user_name}, 'echo')
+                item_info = f"{sell_item} - ₱{price:.2f} - {self.user_name}"
+                self.items_selling.insert(tk.END, item_info)
+                self.items_bidding.insert(tk.END, item_info)
                 self.show_highest_bids()
+                payload = {'action': 'place_sell', 'item': sell_item, 'price': price, 'user_name': self.user_name}
+                self.publish_payload(payload, 'echo')
 
     def delete_sell_item(self):
         selected_index = self.items_selling.curselection()
         if selected_index:
             item_info = self.items_selling.get(selected_index)
             self.items_selling.delete(selected_index)
-            self.items_bidding.delete(self.items_bidding.get(0, END).index(item_info))
+            self.items_bidding.delete(self.items_bidding.get(0, tk.END).index(item_info))
             item_name = item_info.split(' - ')[0]
             if item_name in self.highest_bids:
                 del self.highest_bids[item_name]
-            # Send the message to the server
-            self.publish_payload({'action': 'delete', 'item': item_name}, 'echo')
             self.show_highest_bids()
+            payload = {'action': 'delete_sell', 'item_name': item_name, 'user_name': self.user_name}
+            self.publish_payload(payload, 'echo')
 
     def place_bid(self):
         selected_index = self.items_bidding.curselection()
@@ -149,35 +144,21 @@ class TkEchoClient(BanyanBase):
             new_bid = simpledialog.askfloat("Place Bid", f"Enter your bid for {selected_item}:",
                                             minvalue=current_bid + 0.01)
             if new_bid is not None:
-                user_name = simpledialog.askstring("Your Name", "Enter your name:")
+                bidder_name = self.user_name
                 item_name = selected_item.split(' - ')[0]
                 current_highest_bid = self.get_highest_bid(item_name)
                 if new_bid > current_highest_bid:
-                    self.update_highest_bid(item_name, new_bid, user_name)
-                    updated_item = f"{item_name} - ₱{new_bid:.2f} - Bidder: {user_name}"
-                    self.items_bidding.insert(END, updated_item)
-                    # Send the message to the server
-                    self.publish_payload({'action': 'bid', 'item': item_name, 'bid': new_bid, 'user': user_name},
-                                         'echo')
+                    self.update_highest_bid(item_name, new_bid, bidder_name)
+                    updated_item = f"{item_name} - ₱{new_bid:.2f} - Bidder: {bidder_name}"
+                    self.items_bidding.insert(tk.END, updated_item)
                     self.show_highest_bids()
-                    print(
-                        f"Placed bid for item: {selected_item} - New Bid: ₱{new_bid:.2f} - Highest Bid: ₱{new_bid:.2f} - Bidder: {user_name}")
+                    payload = {'action': 'place_bid', 'item_name': item_name, 'new_bid': new_bid,
+                               'bidder_name': bidder_name, 'user_name': self.user_name}
+                    self.publish_payload(payload, 'echo')
+                    print(f"Placed bid for item: {selected_item} - New Bid: ₱{new_bid:.2f} - "
+                          f"Highest Bid: ₱{new_bid:.2f} - Bidder: {bidder_name}")
                 else:
                     print("Your bid is not higher than the current highest bid.")
-
-    def send(self, *args):
-        msgs = self.to_send_entry.get()
-        # reset the sent count variables to zero
-        self.message_sent_count = 0
-        self.messages_sent.set(str(self.message_sent_count))
-
-        # set current message number to the number of messages to be sent
-        self.message_number = int(msgs)
-
-        # update the number of messages to be sent
-        self.number_of_messages = int(msgs)
-        # Send the message to the server
-        self.publish_payload({'action': 'custom_action', 'msg': 'your_custom_message'}, 'echo')
 
     def get_message(self):
         """
@@ -219,19 +200,6 @@ class TkEchoClient(BanyanBase):
             self.message_sent_count += 1
             self.messages_sent.set(str(self.message_sent_count))
             self.publish_payload({'message_number': self.message_number}, 'echo')
-
-    def send(self, *args):
-        msgs = self.to_send_entry.get()
-        # reset the sent count variables to zero
-        self.message_sent_count = 0
-        self.messages_sent.set(str(self.message_sent_count))
-
-        # set current message number to the number of messages to be sent
-        self.message_number = int(msgs)
-
-        # update the number of messages to be sent
-        self.number_of_messages = int(msgs)
-        self.publish_payload({'message_number': int(msgs)}, 'echo')
 
     def on_closing(self):
         """
