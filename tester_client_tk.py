@@ -20,8 +20,7 @@ from python_banyan.banyan_base import BanyanBase
 
 class TkEchoClient(BanyanBase):
 
-    def __init__(self,topics='reply', number_of_messages=10,
-                 back_plane_ip_address=None, subscriber_port='43125',
+    def __init__(self,topics='reply',back_plane_ip_address=None, subscriber_port='43125',
                  publisher_port='43124', process_name='Auction IO'):
         # Prompt the user for their name
         self.user_name = simpledialog.askstring("Your Name", "Enter your name:")
@@ -53,7 +52,7 @@ class TkEchoClient(BanyanBase):
 
         # setup root window
         self.root = Tk()
-        self.root.title("Auction.IO | Client")
+        self.root.title(f"Auction.IO | {self.user_name}")
 
         self.frame = ttk.Frame(self.root)
         self.frame.pack()
@@ -96,32 +95,31 @@ class TkEchoClient(BanyanBase):
         self.highest_bidder_list = Listbox(self.highest_bidder_frame, width=110, height=10)
         self.highest_bidder_list.grid(row=0, column=0, padx=10, pady=10, sticky="nsew", columnspan=2)
 
-
         self.sell_button.config(command=self.place_sell)
         self.delete_sell_button.config(command=self.delete_sell_item)
         self.bid_button_bidding.config(command=self.place_bid)
 
+        self.highest_bids = {}
+        self.bidders_names = {}
+
+        # self.root.after(2, self.place_sell)
+
         # Adjust column weights
-    def send(self, *args):
-        msgs = self.to_send_entry.get()
-        self.message_sent_count = 0
-        self.messages_sent.set(str(self.message_sent_count))
-        self.message_number = int(msgs)
-        self.number_of_messages = int(msgs)
-        payload = {'message_number': int(msgs), 'action': 'send', 'user_name': self.user_name}
-        self.publish_payload(payload, 'echo')
 
     def place_sell(self):
         sell_item = simpledialog.askstring("Sell Item", "Enter item to sell:")
         if sell_item:
             price = simpledialog.askfloat("Set Price", f"Enter the price for {sell_item}:")
             if price is not None:
-                item_info = f"{sell_item} - ₱{price:.2f} - {self.user_name}"
-                self.items_selling.insert(tk.END, item_info)
-                self.items_bidding.insert(tk.END, item_info)
-                self.show_highest_bids()
-                payload = {'action': 'place_sell', 'item': sell_item, 'price': price, 'user_name': self.user_name}
-                self.publish_payload(payload, 'echo')
+                try:
+                    item_info = f"{sell_item} - ₱{price:.2f} - {self.user_name}"
+                    self.items_selling.insert(END, item_info)
+                    self.items_bidding.insert(END, item_info)
+                    self.show_highest_bids()
+                    payload = {'Action': 'Selling', 'Item': sell_item, 'Price': price, 'Selller': self.user_name}
+                    self.publish_payload(payload, 'echo')
+                except Exception as e:
+                    print(f"Error sending payload: {e}")
 
     def delete_sell_item(self):
         selected_index = self.items_selling.curselection()
@@ -160,6 +158,12 @@ class TkEchoClient(BanyanBase):
                 else:
                     print("Your bid is not higher than the current highest bid.")
 
+    # Add the following method to your TkEchoClient class
+    def show_highest_bids(self):
+        self.highest_bidder_list.delete(0, END)
+        for item, bid in self.highest_bids.items():
+            bidder_name = self.bidders_names.get(item, "Unknown Bidder")
+            self.highest_bidder_list.insert(END, f" Bidder: {bidder_name} - {item} - ₱{bid:.2f} ")
     def get_message(self):
         """
         This method is called from the tkevent loop "after" call. It will poll for new zeromq messages
@@ -189,17 +193,6 @@ class TkEchoClient(BanyanBase):
             self.my_context.term()
             sys.exit(0)
 
-    def incoming_message_processing(self, topic, payload):
-        # When a message is received and its number is zero, finish up.
-        if self.message_number == 0:
-            self.messages_sent.set(str(self.number_of_messages))
-
-        # bump the message number and send the message out
-        else:
-            self.message_number -= 1
-            self.message_sent_count += 1
-            self.messages_sent.set(str(self.message_sent_count))
-            self.publish_payload({'message_number': self.message_number}, 'echo')
 
     def on_closing(self):
         """
