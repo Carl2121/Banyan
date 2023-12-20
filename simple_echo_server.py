@@ -24,14 +24,14 @@ class EchoServer(BanyanBase):
 
             # Republish the message with a topic of 'reply'
             self.publish_payload(payload, 'reply')
-        elif action == 'delete_sell':
-            print('Received delete_sell request:', payload)
+        elif action == 'Deleted':
+            print('[SERVER]', payload)
             # Process the payload and perform necessary actions
 
             # Republish the message with a topic of 'reply'
             self.publish_payload(payload, 'reply')
-        elif action == 'place_bid':
-            print('Received place_bid request:', payload)
+        elif action == 'Bidding':
+            print('[SERVER]', payload)
             # Process the payload and perform necessary actions
 
             # Republish the message with a topic of 'reply'

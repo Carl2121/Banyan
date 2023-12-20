@@ -126,12 +126,12 @@ class TkEchoClient(BanyanBase):
         if selected_index:
             item_info = self.items_selling.get(selected_index)
             self.items_selling.delete(selected_index)
-            self.items_bidding.delete(self.items_bidding.get(0, tk.END).index(item_info))
+            self.items_bidding.delete(self.items_bidding.get(0, END).index(item_info))
             item_name = item_info.split(' - ')[0]
             if item_name in self.highest_bids:
                 del self.highest_bids[item_name]
             self.show_highest_bids()
-            payload = {'action': 'delete_sell', 'item_name': item_name, 'user_name': self.user_name}
+            payload = {'Action': 'Deleted', 'Item Name': item_name, 'Seller': self.user_name}
             self.publish_payload(payload, 'echo')
 
     def place_bid(self):
@@ -148,10 +148,10 @@ class TkEchoClient(BanyanBase):
                 if new_bid > current_highest_bid:
                     self.update_highest_bid(item_name, new_bid, bidder_name)
                     updated_item = f"{item_name} - ₱{new_bid:.2f} - Bidder: {bidder_name}"
-                    self.items_bidding.insert(tk.END, updated_item)
+                    self.items_bidding.insert(END, updated_item)
                     self.show_highest_bids()
-                    payload = {'action': 'place_bid', 'item_name': item_name, 'new_bid': new_bid,
-                               'bidder_name': bidder_name, 'user_name': self.user_name}
+                    payload = {'Action': 'Bidding', 'Item': item_name, 'New Bid': new_bid,
+                               'Bidder Name': bidder_name, 'Seller': self.user_name}
                     self.publish_payload(payload, 'echo')
                     print(f"Placed bid for item: {selected_item} - New Bid: ₱{new_bid:.2f} - "
                           f"Highest Bid: ₱{new_bid:.2f} - Bidder: {bidder_name}")
@@ -159,11 +159,41 @@ class TkEchoClient(BanyanBase):
                     print("Your bid is not higher than the current highest bid.")
 
     # Add the following method to your TkEchoClient class
+    def get_highest_bid(self, item):
+        return self.highest_bids.get(item, 0.0)
+
+    def update_highest_bid(self, item, bid, bidder_name):
+        current_bid = self.get_highest_bid(item)
+        self.highest_bids[item] = max(current_bid, bid)
+        self.bidders_names[item] = bidder_name
+
     def show_highest_bids(self):
         self.highest_bidder_list.delete(0, END)
         for item, bid in self.highest_bids.items():
             bidder_name = self.bidders_names.get(item, "Unknown Bidder")
             self.highest_bidder_list.insert(END, f" Bidder: {bidder_name} - {item} - ₱{bid:.2f} ")
+
+    def update_user_countdown(self, formatted_time):
+        self.countdown_label.config(text=f"Countdown: {formatted_time}")
+
+    def show_highest_bidders_popup(self):
+        popup = Toplevel(self.root)
+        popup.title("Winners")
+        popup.geometry("400x400")  # Set the size of the popup window
+
+        Label(popup, text="Winners", font=("Helvetica", 16, "bold")).pack(pady=10)
+
+        for item, bid in self.highest_bids.items():
+            bidder_name = self.bidders_names.get(item, "Unknown Bidder")
+            Label(popup, text=f"Item: {item}", font=("Helvetica", 12, "bold")).pack(pady=5)
+            Label(popup, text=f"Highest Bid: ₱{bid:.2f}", font=("Helvetica", 10)).pack()
+            Label(popup, text=f"Bidder: {bidder_name}", font=("Helvetica", 10)).pack()
+            Label(popup, text="-------------------------", font=("Helvetica", 10)).pack()
+
+        Button(popup, text="Close", command=popup.destroy).pack(pady=10)
+
+
+
     def get_message(self):
         """
         This method is called from the tkevent loop "after" call. It will poll for new zeromq messages
