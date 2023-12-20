@@ -116,7 +116,7 @@ class TkEchoClient(BanyanBase):
                     self.items_selling.insert(END, item_info)
                     self.items_bidding.insert(END, item_info)
                     self.show_highest_bids()
-                    payload = {'Action': 'Selling', 'Item': sell_item, 'Price': price, 'Selller': self.user_name}
+                    payload = {'Action': 'Selling', 'Item': sell_item, 'Price': price, 'Seller': self.user_name}
                     self.publish_payload(payload, 'echo')
                 except Exception as e:
                     print(f"Error sending payload: {e}")
