@@ -1,5 +1,5 @@
 from __future__ import unicode_literals
-
+from tkinter import messagebox
 import time
 
 
@@ -27,6 +27,24 @@ class TkEchoClient(BanyanBase):
         if not self.user_name:
             sys.exit(0)  # Exit if the user cancels the input
 
+
+        # Call the constructor of BanyanBase to initialize the publisher
+        super(TkEchoClient, self).__init__(back_plane_ip_address=back_plane_ip_address,
+                                           subscriber_port=subscriber_port,
+                                           publisher_port=publisher_port,
+                                           process_name=process_name)
+        
+        # Set the subscriber topics
+        if topics is None:
+            raise ValueError('No Topic List Was Specified.')
+
+        for x in topics:
+            self.set_subscriber_topic(x)
+
+        # Display a message on the server that the client is ready for auction
+        ready_message = f"{self.user_name} is ready for auction"
+        payload = {'Action': 'ReadyForAuction', 'Message': ready_message, 'Seller': self.user_name}
+        self.publish_payload(payload, 'echo')
 
         # ... (your existing __init__ code)
 

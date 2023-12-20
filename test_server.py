@@ -76,8 +76,8 @@ class EchoServer(BanyanBase):
 
     def incoming_message_processing(self, topic, payload):
         action = payload.get('Action', None)
-        seller_name = payload.get('Seller', 'Unknown Seller')
-
+        seller_name = payload.get('Seller', 'Unknown Seller')  # Default to 'Unknown Seller' if not provided
+    
         if action == 'Selling':
             item = payload.get('Item', 'N/A')
             price = payload.get('Price', 'N/A')
@@ -91,8 +91,14 @@ class EchoServer(BanyanBase):
             item = payload.get('Item', 'N/A')
             new_bid = payload.get('New Bid', 'N/A')
             bidder = payload.get('Bidder Name', 'Unknown Bidder')
-            self.server_window.text_logs.insert(tk.END, f'{bidder} Bidding for {seller_name}\'s item: {item} - New Bid: ₱{new_bid:.2f}\n')
+            self.server_window.text_logs.insert(tk.END, f'{bidder} Bidding for {item} - New Bid: ₱{new_bid:.2f}\n')
             self.server_window.text_logs.yview(tk.END)
+        elif action == 'ReadyForAuction':
+            message = payload.get('Message', 'Ready for auction')
+            self.server_window.text_logs.insert(tk.END, f'{message}\n')
+            self.server_window.text_logs.yview(tk.END)
+
+
 
 if __name__ == "__main__":
     root = tk.Tk()
